@@ -1,0 +1,10 @@
+[
+  {
+    "name": "Basic Test Vector 1",
+    "recipient_pk_b64": "...", 
+    "recipient_sk_b64": "...", 
+    "plaintext_b64": "SGVsbG8sIFdlYjMh", 
+    "aad_b64": "Y29udGV4dD10ZXN0", 
+    "expected_payload_contains": ["kyber_ct", "salt", "nonce", "aes_ct", "auth_tag"]
+  }
+]
