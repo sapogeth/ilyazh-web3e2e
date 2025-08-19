@@ -1,25 +1,38 @@
 # src/generate_keys.py
-
-import argparse
-from protocol import generate_kyber_keys
+import sys
+import os
+import cbor2
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.hazmat.primitives import serialization
+from protocol import IlyazhProtocol
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate a Kyber-768 key pair.")
-    parser.add_argument("--pub", required=True, help="Path to save the public key.")
-    parser.add_argument("--sec", required=True, help="Path to save the secret key.")
-    args = parser.parse_args()
-
-    sk, pk = generate_kyber_keys()
-
-    with open(args.pub, 'wb') as f:
-        f.write(pk)
+    """
+    Generates and saves identity keys for a participant
+    """
+    print("=== Identity Key Generation ===")
     
-    with open(args.sec, 'wb') as f:
-        f.write(sk)
+    # Create a protocol instance for key generation
+    protocol = IlyazhProtocol()
+    
+    identity_public = protocol.get_identity_public_bytes()
+    identity_private = protocol.identity_private_key.private_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PrivateFormat.Raw,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    
+    print(f"✅ Identity keys generated successfully!")
+    print(f"   Public Key (Identity_PK): {identity_public.hex()[:16]}...")
+    print(f"   Private Key (Identity_SK): {identity_private.hex()[:16]}...")
+
+    # In a real application, the private key should not be saved
+    # in plaintext to a file.
+    with open('identity_public.bin', 'wb') as f:
+        f.write(identity_public)
         
-    print(f"✅ Key pair generated successfully!")
-    print(f"   Public key saved to: {args.pub}")
-    print(f"   Secret key saved to: {args.sec}")
+    with open('identity_private.bin', 'wb') as f:
+        f.write(identity_private)
 
 if __name__ == "__main__":
     main()

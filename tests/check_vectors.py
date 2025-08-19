@@ -1,37 +1,56 @@
 # tests/check_vectors.py
-
 import json
 import base64
 import sys
-# Добавляем src в путь, чтобы импортировать protocol.py
-sys.path.append('../src') 
-from protocol import encrypt, decrypt
+sys.path.append('src') 
+from protocol import IlyazhProtocol
+from demo_messaging import demo_handshake
 
 def run_tests():
-    print("Running tests...")
-    # Генерируем тестовые данные для примера, так как они случайны
-    from protocol import generate_kyber_keys
-    sk, pk = generate_kyber_keys()
-    plaintext = b"Hello, Web3! This is a test."
-    aad = b"context=test_run"
+    print("=== Running Tests ===")
+
+    # Full End-to-End Test
+    print("Test 1: Full handshake and messaging cycle.")
+    alice, bob, session_id = demo_handshake()
     
-    print("  Encrypting message...")
-    payload = encrypt(pk, plaintext, aad)
+    if not alice or not bob or not session_id:
+        print("❌ Test failed: Handshake was unsuccessful.")
+        return
+
+    message1 = b"Hello, Web3! This is a test."
+    aad1 = b"context=test_run"
     
-    print("  Decrypting message...")
-    decrypted_text = decrypt(sk, payload, aad)
-    
-    assert plaintext == decrypted_text
-    print("✅ Test Passed: Plaintext matches decrypted text.")
-    
-    # Симуляция атаки
+    print("- Alice encrypts and sends a message...")
     try:
-        tampered_payload = payload[:-10] + b'TAMPEREDDD'
-        decrypt(sk, tampered_payload, aad)
-        # Если мы дошли сюда, тест провален
-        print("❌ Test Failed: Tampered message was decrypted.")
-    except ValueError:
-        print("✅ Test Passed: Tampered message was correctly rejected.")
+        payload1 = alice.encrypt_message(session_id, message1, aad1)
+    except Exception as e:
+        print(f"❌ Test failed: Encryption error: {e}")
+        return
+
+    print("- Bob decrypts the message...")
+    try:
+        decrypted_text = bob.decrypt_message(payload1, aad1)
+        assert message1 == decrypted_text
+        print("✅ Test passed: Plaintext matches the decrypted text.")
+    except Exception as e:
+        print(f"❌ Test failed: Decryption error: {e}")
+        return
+
+    # Tampering test
+    print("  Test 2: Verifying protection against tampering (A.A.D.).")
+    try:
+        tampered_aad = b"tampered_aad"
+        bob.decrypt_message(payload1, tampered_aad)
+        print("❌ Test failed: Tampered AAD was not rejected.")
+    except ValueError as e:
+        print(f"✅ Test passed: Tampered AAD was correctly rejected ({e}).")
+
+    try:
+        tampered_payload = payload1[:-10] + b'TAMPEREDDD'
+        bob.decrypt_message(tampered_payload, aad1)
+        print("❌ Test failed: Tampered ciphertext was decrypted.")
+    except ValueError as e:
+        print(f"✅ Test passed: Tampered ciphertext was correctly rejected ({e}).")
 
 if __name__ == "__main__":
     run_tests()
