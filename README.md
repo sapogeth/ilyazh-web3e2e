@@ -4,7 +4,7 @@
 [![Status: Specification Draft](https://img.shields.io/badge/status-draft-blue.svg)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> **Version 1.0**
+> **Version 0.3**
 >
 > A forward-secure, post-quantum hybrid protocol for authenticated key exchange and end-to-end (E2E) encrypted messaging, designed for decentralized environments.
 
