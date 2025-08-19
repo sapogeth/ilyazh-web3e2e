@@ -1,4 +1,3 @@
-# ilyazh-e2eweb3
 # 🔐 Ilyazh-Web3E2E: A Post-Quantum Hybrid Encryption Protocol Specification
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
