@@ -5,7 +5,7 @@ with a preliminary check for Kyber-768 algorithm availability
 
 import os
 import sys
-import pyoqs as oqs
+import oqs
 
 sys.path.append('src')
 from protocol import IlyazhProtocol

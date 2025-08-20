@@ -76,7 +76,7 @@ The primary recommended suite is:
 
 | Component | Specification |
 |---|---|
-| **KEM** | Hybrid: **X25519** + **Kyber512** |
+| **KEM** | Hybrid: **X25519** + **Kyber768** |
 | **AEAD** | **AES-256-GCM** |
 | **KDF** | **HKDF-SHA256** |
 | **Signature** | **Ed25519** (Migration path to **Dilithium3**) |

@@ -53,7 +53,7 @@ def demo_handshake():
     # Check that the keys match
     print("5. Verifying shared keys...")
     alice_session = alice.sessions[session_id]
-    bob_session = bob.ns[list(bob.sessions.keys())[0]]
+    bob_session = bob.sessions[list(bob.sessions.keys())[0]]
     
     print("Root keys match:", alice_session['root_key'] == bob_session['root_key'])
     print("Alice sending chain:", alice_session.get('sending_chain') is not None)

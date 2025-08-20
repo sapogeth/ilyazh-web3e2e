@@ -1,7 +1,7 @@
 # src/decrypt.py
 import argparse
 import sys
-import pyoqs as oqs
+import oqs
 
 sys.path.append('src')
 from protocol import IlyazhProtocol
