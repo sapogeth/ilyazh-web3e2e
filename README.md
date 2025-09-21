@@ -1,150 +1,138 @@
-# 🔐 Ilyazh-Web3E2E: A Post-Quantum Hybrid Encryption Protocol Specification
+# 🔐 Ilyazh-Web3E2E: Post-Quantum Hybrid Protocol Specification (v0.7)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Status: Specification Draft](https://img.shields.io/badge/status-draft-blue.svg)]()
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Status: Draft](https://img.shields.io/badge/status-draft-blue.svg)]()
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
 
-> **Version 0.7**
+> **Version 0.7 — September 2025**
 >
 > A forward-secure, post-quantum hybrid protocol for authenticated key exchange and end-to-end (E2E) encrypted messaging, designed for decentralized environments.
 
 ---
 
-## Table of Contents
+## 📖 Table of Contents
 
-1.  [Introduction](#1-introduction)
-2.  [Terminology](#2-terminology)
-3.  [Threat Model](#3-threat-model)
-4.  [Security Goals](#4-security-goals)
-5.  [Protocol Overview](#5-protocol-overview)
-6.  [Detailed Specification](#6-detailed-specification)
-    1.  [Cryptographic Primitives](#61-cryptographic-primitives)
-    2.  [Peer Authentication & Session Establishment](#62-peer-authentication--session-establishment)
-    3.  [Hybrid Key Encapsulation (KEM)](#63-hybrid-key-encapsulation-kem)
-    4.  [Double Ratchet Algorithm](#64-double-ratchet-algorithm)
-    5.  [Wire Format](#65-wire-format)
-7.  [Security Considerations](#7-security-considerations)
-8.  [Test Vectors](#8-test-vectors)
-9.  [Future Work & Roadmap](#9-future-work--roadmap)
-10. [Acknowledgements](#10-acknowledgements)
+1. [Introduction](#introduction)
+2. [Threat Model](#threat-model)
+3. [Security Goals](#security-goals)
+4. [Protocol Overview](#protocol-overview)
+5. [Detailed Specification](#detailed-specification)
+   - [Cryptographic Primitives](#cryptographic-primitives)
+   - [Peer Authentication & Session Establishment](#peer-authentication--session-establishment)
+   - [Hybrid Key Encapsulation (KEM)](#hybrid-key-encapsulation-kem)
+   - [Double Ratchet Algorithm](#double-ratchet-algorithm)
+   - [Wire Format](#wire-format)
+6. [Security Considerations](#security-considerations)
+7. [Test Vectors](#test-vectors)
+8. [Future Work & Roadmap](#future-work--roadmap)
+9. [Acknowledgements](#acknowledgements)
 
 ---
 
 ## 1. Introduction
 
-Ilyazh-Web3E2E is a cryptographic protocol designed to provide robust, multi-layered security for peer-to-peer communication in the Web3 era. It addresses the dual threat of classical and quantum adversaries by implementing a hybrid key exchange mechanism and follows modern best practices to ensure confidentiality, integrity, and forward secrecy.
+Ilyazh-Web3E2E is a cryptographic protocol designed for **robust, multi-layered security** in decentralized messaging. It targets the **Harvest-Now, Decrypt-Later** threat by combining classical and post-quantum primitives in a hybrid AKE (Authenticated Key Exchange). It prioritizes **verifiable security and transparency** using only standardized, community-vetted primitives.
 
-The protocol's philosophy prioritizes **verifiable security and transparency** over proprietary or obscure algorithms, using only standardized, community-vetted cryptographic primitives. This document serves as a technical specification for implementers and a basis for formal security analysis.
+## 2. Threat Model
 
-## 2. Terminology
+- **Adversary:** Active, controls the network (read, modify, replay, delete packets).
+- **Device Compromise:** Protocol minimizes impact on past/future communications.
+- **Quantum Adversary:** Security preserved against large-scale quantum computers.
 
--   **Party:** An endpoint in the communication (e.g., a user, device, or server).
--   **Identity Key:** A long-term public/private key pair used for signing, establishing a party's identity (e.g., `Ed25519`).
--   **Ephemeral Key:** A short-term public/private key pair generated for a single session to provide forward secrecy.
--   **Session:** A secure communication context between two parties.
--   **Chain Key (CK):** A key in the Double Ratchet used to derive subsequent Chain Keys and Message Keys.
--   **Message Key (MK):** A key used to encrypt a single message with an AEAD cipher.
+## 3. Security Goals
 
-## 3. Threat Model
+- **Confidentiality:** Messages indistinguishable from random.
+- **Integrity & Authenticity:** Forgery/reordering undetectable.
+- **Forward Secrecy:** Compromise of long-term keys ≠ past confidentiality.
+- **Post-Quantum Security:** Resistant to quantum adversaries.
 
-The protocol is designed to be secure against a powerful, **active adversary** who has full control over the network. The adversary can read, modify, inject, replay, and delete packets at will. The compromise of a party's device is also considered, with the goal of minimizing the impact on past and future communications.
+## 4. Protocol Overview
 
-## 4. Security Goals
+Session establishment (simplified):
 
-The protocol is designed to achieve the following formal security goals:
+```
+Alice → Bob : Ephemeral_PK_A, Sig_A( Ephemeral_PK_A )
+Bob   → Alice: Ephemeral_PK_B, Sig_B( Ephemeral_PK_B ), ML-KEM_Ct
+```
 
--   **Confidentiality:** The content of messages is computationally indistinguishable from random noise to any party other than the intended recipient.
--   **Integrity & Authenticity:** It is computationally infeasible for an adversary to modify, forge, or reorder messages without detection. If Party A accepts a message as coming from Party B, then B must have actually sent that message in that context.
--   **Forward Secrecy:** The compromise of a party's long-term Identity Keys or current session state does not compromise the confidentiality of past messages.
--   **Post-Quantum Security:** Confidentiality is maintained against an adversary with access to a large-scale quantum computer.
+- Hybrid secret = X25519 || ML-KEM-768 shared secret
+- Derive `sid`, `root_key`, and chain keys via **HKDF-SHA384**
+- Enter **Double Ratchet** for ongoing secure messaging
 
-## 5. Protocol Overview
+## 5. Detailed Specification
 
-Ilyazh-Web3E2E is an **Authenticated Key Exchange (AKE)** protocol that establishes a secure, forward-secure session.
+### Cryptographic Primitives
 
-**Session Establishment Flow:**
-Alice -> Bob : Ephemeral_PK_A, Sig(Ephemeral_PK_A, Identity_SK_A)
-Bob   -> Alice: Ephemeral_PK_B, Sig(Ephemeral_PK_B, Identity_SK_B), KEM_Ciphertext(Ephemeral_PK_A)
+| Component   | Specification                                  |
+|-------------|-----------------------------------------------|
+| **KEM**     | Hybrid: **X25519** + **ML-KEM-768**           |
+| **AEAD**    | **AES-256-GCM**                               |
+| **KDF**     | **HKDF-SHA384** (domain-separated labels)      |
+| **Signature** | Dual: **Ed25519** + **ML-DSA-65**            |
 
-This flow establishes an authenticated, hybrid shared secret which then initializes a Double Ratchet for ongoing communication.
+### Peer Authentication & Session Establishment
 
-## 6. Detailed Specification
+- Ephemeral KEM public keys signed with **both** Ed25519 and ML-DSA-65.
+- Transcript binding (`t0 → t1 → t2`) prevents downgrade/UKS attacks.
+- Session ID (`sid`) derived from transcript hash + hybrid secret.
 
-### 6.1. Cryptographic Primitives
+### Hybrid Key Encapsulation (KEM)
 
-The primary recommended suite is:
+```
+ss = HKDF-Extract( salt=t2 , IKM = X25519(sk_A, pk_B) || ML-KEM.Decaps(sk_Apq, ct_B) )
+```
 
-| Component | Specification |
-|---|---|
-| **KEM** | Hybrid: **X25519** + **Kyber768** |
-| **AEAD** | **AES-256-GCM** |
-| **KDF** | **HKDF-SHA256** |
-| **Signature** | **Ed25519** (Migration path to **Dilithium3**) |
+### Double Ratchet Algorithm
 
-### 6.2. Peer Authentication & Session Establishment
+- **Symmetric Ratchet:** `CK_{n+1}, MK = HKDF(CK_n, label_msg)`
+- **DH Ratchet:** Periodic re-encapsulation to heal compromise.
+- **Nonce discipline:** `R64 || C32` per epoch (random 64-bit prefix + 32-bit counter).
 
-Each party signs their ephemeral KEM public key with their long-term identity key. This prevents a MitM from substituting their own ephemeral key during the handshake.
+### Wire Format
 
-### 6.3. Hybrid Key Encapsulation (KEM)
-
-The initial shared secret (`ss`) for the Double Ratchet's root key is derived from the concatenated outputs of both the classical and post-quantum key exchanges.
-
-`ss = HKDF-Extract(salt, X25519(sk_a, pk_b) || Kyber.Decaps(sk_a_pq, ct_b))`
-
-### 6.4. Double Ratchet Algorithm
-
-The protocol uses a standard Double Ratchet to manage session keys:
--   **Symmetric-key Ratchet:** After each message, a new Message Key (`MK`) is derived from the current Chain Key (`CK`), and the `CK` is updated: `CK_n+1 = HKDF(CK_n, ...)`
--   **DH Ratchet:** Periodically, a new KEM exchange is performed to update the root key, providing post-compromise security (healing).
-
-### 6.5. Wire Format
-
-A fixed binary format (e.g., CBOR) is specified. All header fields are authenticated as **Associated Data (AAD)** by AES-GCM.
-
+```
 struct CiphertextPayload {
-u8  version;         // 0x01
-u16 suite_id;        // 0x0001 for default suite
-u64 seq;             // Message sequence number
-u96 nonce;           // 32-bit counter || 64-bit random prefix
-bytes enc_kem;       // KEM encapsulated key(s)
-bytes ciphertext;    // AEAD ciphertext || 16-byte auth_tag
+  u8   version;     // 0x03 (v0.7)
+  u16  suite_id;    // 0x0001
+  u64  seq;         // message sequence number
+  u96  nonce;       // R64 || C32
+  bytes sid;        // 32B session identifier
+  bytes enc_kem;    // optional PQ rekey
+  bytes ciphertext; // AEAD ciphertext + tag
 }
+```
 
+## 6. Security Considerations
 
-## 7. Security Considerations
+- **Limits:**
+  - Rekey every ≤ 2^20 messages or 24h.
+  - Session expires after 2^32 messages.
+- **Nonce reuse forbidden.**
+- **Constant-time implementation required.**
+- **CSPRNG required** for ephemeral keys and nonces.
 
--   **Limits & Invariants:**
-    -   A session MUST be re-established after a maximum of `2^32` messages.
-    -   A symmetric rekey (`CK` update) MUST occur at least every `2^20` messages or 24 hours.
-    -   The GCM nonce **MUST NOT** be repeated for a given key. The `counter || random` structure is designed to make this practically impossible.
--   **Implementation:** All cryptographic operations MUST be implemented in **constant time**. All secret key material MUST be securely **zeroed** from memory after use.
--   **Randomness:** A Cryptographically Secure Pseudo-Random Number Generator (CSPRNG) is required.
+## 7. Test Vectors
 
-## 8. Test Vectors
+Example (conceptual hex):
 
-This section provides test vectors for the default cipher suite to ensure implementation compatibility.
+- Alice Identity SK (Ed25519): `c5aa...`
+- Alice Ephemeral SK (X25519 + ML-KEM): `7707...`
+- Plaintext: `Hello, Web3!`
+- AAD: `0300010000000000000001...`
+- Payload: `030001...`
 
-**(Example using conceptual hex values)**
--   **Alice Identity SK (Ed25519):** `c5aa...`
--   **Alice Ephemeral SK (X25519+Kyber768):** `7707...`
--   **Message Plaintext:** `Hello, Web3!`
--   **AAD:** `0100010000000000000001...`
--   **Final Payload (Hex):** `010001...`
+## 8. Future Work & Roadmap
 
-*(A full implementation would include a script to generate and verify these vectors.)*
+- [ ] Formal verification (Tamarin / ProVerif)
+- [ ] Rust constant-time reference implementation
+- [ ] Performance benchmarks (IoT, mobile, WASM)
+- [ ] Integration into [Stvor Messenger](https://github.com/sapogeth/Stvor)
 
-## 9. Future Work & Roadmap
+## 9. Acknowledgements
 
--   [ ] **Formal Verification:** Model the protocol in **Tamarin** or **ProVerif** for a machine-checked security proof.
--   [ ] **Rust Implementation:** Develop a production-grade, constant-time reference implementation.
--   [ ] **Performance Benchmarking:** Analyze performance on mobile, IoT, and WebAssembly targets.
--   [ ] **Pilot Deployment:** Integrate the protocol into the [Stvor Messenger](https://github.com/sapogeth/Stvor) as a pilot.
-
-## 10. Acknowledgements
-
-This protocol's architecture was significantly improved by following the guidance of **Professor Henry Corrigan-Gibbs of MIT**, who recommended a deep dive into foundational cryptographic principles. The resulting design is a direct reflection of the lessons learned from the MIT 6.1600 course materials and subsequent expert feedback.
+- Prof. Henry Corrigan-Gibbs (MIT) for guidance on principled cryptographic design.
+- Community feedback from IACR reviewers and Web3 security researchers.
 
 ---
 
-*Author:*
-- Ilyas Zhaisenbayev
+**Author:** Ilyas Zhaisenbayev
