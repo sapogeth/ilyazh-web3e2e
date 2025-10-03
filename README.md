@@ -1,10 +1,10 @@
-# 🔐 Ilyazh-Web3E2E: Post-Quantum Hybrid Protocol Specification (v0.7)
+# 🔐 Ilyazh-Web3E2E: Post-Quantum Hybrid Protocol Specification (v0.8)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Status: Draft](https://img.shields.io/badge/status-draft-blue.svg)]()
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)]()
 
-> **Version 0.7 — September 2025**
+> **Version 0.8 — September 2025**
 >
 > A forward-secure, post-quantum hybrid protocol for authenticated key exchange and end-to-end (E2E) encrypted messaging, designed for decentralized environments.
 
@@ -92,7 +92,7 @@ ss = HKDF-Extract( salt=t2 , IKM = X25519(sk_A, pk_B) || ML-KEM.Decaps(sk_Apq, c
 
 ```
 struct CiphertextPayload {
-  u8   version;     // 0x03 (v0.7)
+  u8   version;     // 0x03 (v0.8)
   u16  suite_id;    // 0x0001
   u64  seq;         // message sequence number
   u96  nonce;       // R64 || C32
